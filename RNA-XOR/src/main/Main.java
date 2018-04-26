@@ -23,7 +23,7 @@ public class Main {
             {0}
         };
         TransferFunction sigmoid = new SimpleSigmoidFunction();
-        double learningRate = 0.01;
+        double learningRate = 0.001;
         SimpleNeuralNetwork xor = new SimpleNeuralNetwork(input, hiddenAmount, expectedOutput, sigmoid, learningRate);
         
         System.out.println("XOR created, now training");
@@ -31,16 +31,15 @@ public class Main {
             xor.train();
         }
         System.out.println("training finished, results:");
-        xor.feedForward();
         System.out.println("expected:\n"
                 + "0 0 ->" + expectedOutput[0][0] + "\n"
                 + "0 1 ->" + expectedOutput[1][0] + "\n"
-                + "0 1 ->" + expectedOutput[2][0] + "\n"
-                + "0 1 ->" + expectedOutput[3][0]);
+                + "1 0 ->" + expectedOutput[2][0] + "\n"
+                + "1 1 ->" + expectedOutput[3][0]);
         System.out.println("obtained:\n"
                 + "0 0 ->" + xor.getOutput()[0][0] + "\n"
                 + "0 1 ->" + xor.getOutput()[1][0] + "\n"
-                + "0 1 ->" + xor.getOutput()[2][0] + "\n"
-                + "0 1 ->" + xor.getOutput()[3][0]);
+                + "1 0 ->" + xor.getOutput()[2][0] + "\n"
+                + "1 1 ->" + xor.getOutput()[3][0]);
     }
 }
