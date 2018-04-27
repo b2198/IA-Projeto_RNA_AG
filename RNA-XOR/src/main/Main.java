@@ -15,7 +15,7 @@ public class Main {
             {1, 0},
             {1, 1}
         };
-        int hiddenAmount = 2;
+        int hiddenAmount = 3;
         double[][] expectedOutput = new double[][]{
             {0},
             {1},
