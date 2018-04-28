@@ -17,8 +17,13 @@ public class SimpleNeuralNetwork {
     private final double learningRate;
     private final double[][] Xi;
     private final double[][] Xh;
+    private final double momentum;
+    private double[][] lastUpdateVector0;
+    private double[][] lastUpdateVector1;
+    private boolean lastUpdateVector0Initialized;
+    private boolean lastUpdateVector1Initialized;
     
-    public SimpleNeuralNetwork(double[][] input, int hiddenAmount, double[][] expectedOutput, TransferFunction function, double learningRate) {
+    public SimpleNeuralNetwork(double[][] input, int hiddenAmount, double[][] expectedOutput, TransferFunction function, double learningRate, double momentum) {
         this.input = input;
         this.hidden = new double[input.length][hiddenAmount];
         this.output = new double[expectedOutput.length][expectedOutput[0].length];
@@ -27,12 +32,27 @@ public class SimpleNeuralNetwork {
         this.expectedOutput = expectedOutput;
         this.function = function;
         this.learningRate = learningRate;
+        this.momentum = momentum;
         
         Xi = new double[input.length][input[0].length+1];
         Xh = new double[input.length][hiddenAmount+1];
         
         setXi();
         setXh();
+        
+        /*
+        weights0 = new double[][]{
+            {0.1,0.2,0.3},
+            {0.4,0.5,0.6},
+            {0.7,0.8,0.9}
+        };
+        weights1 = new double[][]{
+            {1.0},
+            {1.1},
+            {1.2},
+            {1.3}
+        };
+        */
         
         
         //initialize weights0 with random values
@@ -47,6 +67,10 @@ public class SimpleNeuralNetwork {
                 weights1[i][j] = (double)Math.random();
             }
         }
+        
+        
+        lastUpdateVector0 = new double[weights0.length][weights0[0].length];
+        lastUpdateVector1 = new double[weights1.length][weights1[0].length];
 
         System.out.println("Simple Neural Network created, initial state:\n"
                 + "input:\n" + MatrixOperations.toString(input) + "\n"
@@ -69,18 +93,21 @@ public class SimpleNeuralNetwork {
         //H = TF(Xi * W0)
         setXi();
         MatrixOperations.matrixMult(Xi, weights0, hidden);
-        //System.out.println("I * W0 = \n" + MatrixOperations.toString(hidden));
+        //System.out.println("Xi * W0 = \n" + MatrixOperations.toString(hidden));
         MatrixOperations.applyTransferFunction(function, hidden, hidden);
-        //System.out.println("TF(I * W0) =\n" + MatrixOperations.toString(hidden));
+        //System.out.println("TF(Xi * W0) =\n" + MatrixOperations.toString(hidden));
         
         //O = TF(Xh * W1)
         setXh();
         MatrixOperations.matrixMult(Xh, weights1, output);
-        //System.out.println("H * W1 =\n" + MatrixOperations.toString(output));
+        //System.out.println("Xh * W1 =\n" + MatrixOperations.toString(output));
         MatrixOperations.applyTransferFunction(function, output, output);
-        //System.out.println("TF(H * W1) =\n" + MatrixOperations.toString(output));
+        //System.out.println("TF(Xh * W1) =\n" + MatrixOperations.toString(output));
         
         //System.out.println("feed forward finished");
+        
+        //setXi();
+        //setXh();
     }
     
     public void backPropagation(){
@@ -125,6 +152,17 @@ public class SimpleNeuralNetwork {
         }
         //System.out.println("Itransposta =\n" + MatrixOperations.toString(itdeltaH));
         xitXdeltaH = MatrixOperations.matrixMult(xitXdeltaH, xDeltaH);
+        if(!lastUpdateVector0Initialized){
+            lastUpdateVector0Initialized = true;
+        } else {
+            MatrixOperations.elementByElementMult(momentum, lastUpdateVector0, lastUpdateVector0);
+            MatrixOperations.matrixAdd(lastUpdateVector0, xitXdeltaH, xitXdeltaH);
+        }
+        for(int i = 0; i < xitXdeltaH.length; i++){
+            for(int j = 0; j < xitXdeltaH[0].length; j++){
+                lastUpdateVector0[i][j] = xitXdeltaH[i][j];
+            }
+        }
         //System.out.println("Itransposta * deltaH =\n" + MatrixOperations.toString(itdeltaH));
         MatrixOperations.matrixAdd(weights0, xitXdeltaH, weights0);
         //System.out.println("W0 + Itransposta * deltaH =\n" + MatrixOperations.toString(weights0));
@@ -134,6 +172,17 @@ public class SimpleNeuralNetwork {
         double[][] htdeltaO = MatrixOperations.transpose(Xh);
         //System.out.println("Htransposta =\n" + MatrixOperations.toString(htdeltaO));
         htdeltaO = MatrixOperations.matrixMult(htdeltaO, deltaO);
+        if(!lastUpdateVector1Initialized){
+            lastUpdateVector1Initialized = true;
+        } else {
+            MatrixOperations.elementByElementMult(momentum, lastUpdateVector1, lastUpdateVector1);
+            MatrixOperations.matrixAdd(lastUpdateVector1, htdeltaO, htdeltaO);
+        }
+        for(int i = 0; i < htdeltaO.length; i++){
+            for(int j = 0; j < htdeltaO[0].length; j++){
+                lastUpdateVector1[i][j] = htdeltaO[i][j];
+            }
+        }
         //System.out.println("Htransposta * deltaO =\n" + MatrixOperations.toString(htdeltaO));
         MatrixOperations.matrixAdd(weights1, htdeltaO, weights1);
         //System.out.println("W1 + Htransposta * deltaO =\n" + MatrixOperations.toString(weights1));

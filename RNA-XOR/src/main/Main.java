@@ -23,8 +23,9 @@ public class Main {
             {0}
         };
         TransferFunction sigmoid = new SimpleSigmoidFunction();
-        double learningRate = 0.001;
-        SimpleNeuralNetwork xor = new SimpleNeuralNetwork(input, hiddenAmount, expectedOutput, sigmoid, learningRate);
+        double learningRate = 0.0001;
+        double momentum = 0.01;
+        SimpleNeuralNetwork xor = new SimpleNeuralNetwork(input, hiddenAmount, expectedOutput, sigmoid, learningRate, momentum);
         
         System.out.println("XOR created, now training");
         for(int i = 0; i < 100000; i++){
