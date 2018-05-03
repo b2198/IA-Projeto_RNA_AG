@@ -1,5 +1,6 @@
 package main;
 
+import main.transferfunctions.SimpleHyperbolicTangentFunction;
 import main.transferfunctions.SimpleSigmoidFunction;
 import main.transferfunctions.TransferFunction;
 
@@ -22,10 +23,13 @@ public class Main {
             {1},
             {0}
         };
-        TransferFunction sigmoid = new SimpleSigmoidFunction();
-        double learningRate = 0.0001;
-        double momentum = 0.01;
-        SimpleNeuralNetwork xor = new SimpleNeuralNetwork(input, hiddenAmount, expectedOutput, sigmoid, learningRate, momentum);
+        TransferFunction function;
+        function = new SimpleSigmoidFunction(1.01,-0.005);
+        //function = new SimpleHyperbolicTangentFunction();
+        double learningRate = 0.1;
+        double momentum = 0.8;
+        SimpleNeuralNetwork xor = new SimpleNeuralNetwork(input, hiddenAmount, expectedOutput, function, learningRate, momentum);
+        
         
         System.out.println("XOR created, now training");
         for(int i = 0; i < 100000; i++){
