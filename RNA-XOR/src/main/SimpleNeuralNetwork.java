@@ -8,28 +8,24 @@ import main.transferfunctions.TransferFunction;
  */
 public class SimpleNeuralNetwork {
     private double[][] input;
-    private double[][] hidden;
+    private double[][][] hidden;
     private double[][] output;
-    private double[][] weights0;
-    private double[][] weights1;
+    private double[][][] weights;
     private double[][] expectedOutput;
-    private double[][] oError;
-    private double[][] hError;
+    private double[][][] errors;
     private TransferFunction function;
     private double learningRate;
     //input with bias
     private double[][] xi;
     //hidden with bias
-    private double[][] xh;
+    private double[][][] xh;
     private double momentum;
-    private double[][] lastUpdateVector0;
-    private double[][] lastUpdateVector1;
-    private boolean lastUpdateVector0Initialized;
-    private boolean lastUpdateVector1Initialized;
+    private double[][][] lastUpdateVectors;
+    private boolean[] lastUpdateVectorsInitialized;
     
-    public SimpleNeuralNetwork(double[][] input, int hiddenAmount, double[][] expectedOutput, TransferFunction function, double learningRate, double momentum) {
+    public SimpleNeuralNetwork(double[][] input, int[] hiddenAmount, double[][] expectedOutput, TransferFunction function, double learningRate, double momentum) {
         set(input, hiddenAmount, expectedOutput, function, learningRate, momentum);
-        System.out.println("Simple Neural Network created, initial state:\n"
+        /*System.out.println("Simple Neural Network created, initial state:\n"
                 + "input:\n" + MatrixOperations.toString(input) + "\n"
                 + "hidden:\n" + MatrixOperations.toString(hidden) + "\n"
                 + "output:\n" + MatrixOperations.toString(output) + "\n"
@@ -37,47 +33,65 @@ public class SimpleNeuralNetwork {
                 + "Xh:\n" + MatrixOperations.toString(xh) + "\n"
                 + "weights0:\n" + MatrixOperations.toString(weights0) + "\n"
                 + "weights1:\n" + MatrixOperations.toString(weights1) + "\n"
-                + "expected output:\n" + MatrixOperations.toString(expectedOutput));
+                + "expected output:\n" + MatrixOperations.toString(expectedOutput));*/
     }
     
-    public void set(double[][]input, int hiddenAmount, double[][] expectedOutput, TransferFunction function, double learningRate, double momentum){
+    public void set(double[][]input, int[] hiddenAmounts, double[][] expectedOutput, TransferFunction function, double learningRate, double momentum){
         if(input.length != expectedOutput.length){
             throw new RuntimeException("Input and expected output lengths don't match");
         }
         this.input = input;
-        this.hidden = new double[input.length][hiddenAmount];
+        this.hidden = new double[hiddenAmounts.length][input.length][];
+        for(int i = 0; i < hiddenAmounts.length; i++){
+            for(int j = 0; j < input.length; j++){
+                this.hidden[i][j] = new double[hiddenAmounts[i]];
+            }
+        }
         this.output = new double[input.length][expectedOutput[0].length];
-        this.weights0 = new double[input[0].length+1][hiddenAmount];
-        this.weights1 = new double[hiddenAmount+1][expectedOutput[0].length];
+        this.weights = new double[hiddenAmounts.length+1][][];
+        this.weights[0] = new double[input[0].length+1][hiddenAmounts[0]];
+        for(int i = 1; i < hiddenAmounts.length; i++){
+            this.weights[i] = new double[hiddenAmounts[i-1]+1][hiddenAmounts[i]];
+        }
+        this.weights[hiddenAmounts.length] = new double[hiddenAmounts[hiddenAmounts.length-1]+1][expectedOutput[0].length];
         this.expectedOutput = expectedOutput;
         this.function = function;
         this.learningRate = learningRate;
         this.momentum = momentum;
-        this.oError = new double[input.length][expectedOutput[0].length];
-        this.hError = new double[input.length][weights1.length];
+        this.errors = new double[hiddenAmounts.length+1][][];
+        //System.out.println("errors length: " + this.errors.length);
+        for(int i = 0; i < hiddenAmounts.length; i++){
+            //System.out.println("i: " + i);
+            this.errors[i] = new double[input.length][hiddenAmounts[i]+1];
+        }
+        this.errors[hiddenAmounts.length] = new double[input.length][expectedOutput[0].length];
         
         xi = new double[input.length][input[0].length+1];
-        xh = new double[input.length][hiddenAmount+1];
-        
         setXi();
-        setXh();
-        
-        //initialize weights0 with random values
-        for(int i = 0; i < weights0.length; i++){
-            for(int j = 0; j < weights0[i].length; j++){
-                weights0[i][j] = Math.random();
-            }
-        }
-        //initialize weights1 with random values
-        for(int i = 0; i < weights1.length; i++){
-            for(int j = 0; j < weights1[i].length; j++){
-                weights1[i][j] = (double)Math.random();
-            }
+        xh = new double[hiddenAmounts.length][][];
+        for(int i = 0; i < hiddenAmounts.length; i++){
+            xh[i] = new double[input.length][hiddenAmounts[i]+1];
+            setXh(i);
         }
         
+        //initialize weights with random values
+        for(int i = 0; i < weights.length; i++){
+            for(int j = 0; j < weights[i].length; j++){
+                for(int k = 0; k < weights[i][j].length; k++){
+                    weights[i][j][k] = Math.random();
+                }
+            }
+        }
         
-        lastUpdateVector0 = new double[weights0.length][weights0[0].length];
-        lastUpdateVector1 = new double[weights1.length][weights1[0].length];
+        
+        lastUpdateVectors = new double[hiddenAmounts.length+1][][];
+        lastUpdateVectorsInitialized = new boolean[hiddenAmounts.length+1];
+        for(int i = 0; i < hiddenAmounts.length+1; i++){
+            lastUpdateVectors[i] = new double[weights[i].length][];
+            for(int j = 0; j < weights[i].length; j++){
+                lastUpdateVectors[i][j] = new double[weights[i][j].length];
+            }
+        }
     }
 
     public double[][] getOutput() {
@@ -85,14 +99,27 @@ public class SimpleNeuralNetwork {
     }
     
     public void feedForward(){
-        //H = TF(Xi * W0)
+        //H0 = TF(Xi * W0)
         setXi();
-        MatrixOperations.matrixMult(xi, weights0, hidden);
-        MatrixOperations.applyTransferFunction(function, hidden, hidden);
+        MatrixOperations.matrixMult(xi, weights[0], hidden[0]);
+        MatrixOperations.applyTransferFunction(function, hidden[0], hidden[0]);
         
-        //O = TF(Xh * W1)
-        setXh();
-        MatrixOperations.matrixMult(xh, weights1, output);
+        //Hn = TF(Xhn-1 * Wn)
+        for(int i = 1; i < hidden.length; i++){
+            setXh(i-1);
+            MatrixOperations.matrixMult(xh[i-1], weights[i], hidden[i]);
+            MatrixOperations.applyTransferFunction(function, hidden[i], hidden[i]);
+        }
+        
+        //O = TF(Xhlength-1 * Wlength)
+        //System.out.println("checking matrices");
+        for(int i = 0; i < hidden.length; i++){
+            //System.out.println(MatrixOperations.toString(hidden[i])+"\n");
+        }
+        setXh(hidden.length-1);
+        //System.out.println("checking Xh");
+        //System.out.println(MatrixOperations.toString(xh[0]));
+        MatrixOperations.matrixMult(xh[hidden.length-1], weights[hidden.length], output);
         MatrixOperations.applyTransferFunction(function, output, output);
         
     }
@@ -101,56 +128,93 @@ public class SimpleNeuralNetwork {
         
         //Eo = Oesperado - O;
         //deltaO = LR * Eo *(elemento a elemento) dTF(O)/dx
-        MatrixOperations.matrixSub(expectedOutput, output, oError);
+        MatrixOperations.matrixSub(expectedOutput, output, errors[hidden.length]);
         
         double[][] deltaO = MatrixOperations.applyTransferFunctionDerivative(function, output);
-        MatrixOperations.elementByElementMult(oError, deltaO, deltaO);
+        MatrixOperations.elementByElementMult(errors[hidden.length], deltaO, deltaO);
         MatrixOperations.elementByElementMult(learningRate, deltaO, deltaO);
         
+        //Ehlength-1 = deltaO * Wlengthtransposta
+        //deltaHlength-1 = LR * Ehlength-1 *(elemento a elemento) dTF(Xhlength-1)/dx
+        double[][] wlengtht = MatrixOperations.transpose(weights[hidden.length]);
+        MatrixOperations.matrixMult(deltaO, wlengtht, errors[hidden.length-1]);
         
-        //Eh = deltaO * W1transposta
-        //deltaH = LR * Eh *(elemento a elemento) dTF(Xh)/dx
-        double[][] w1t = MatrixOperations.transpose(weights1);
-        MatrixOperations.matrixMult(deltaO, w1t, hError);
+        double[][] deltaHlengthm1 = MatrixOperations.applyTransferFunctionDerivative(function, xh[hidden.length-1]);
+        MatrixOperations.elementByElementMult(errors[hidden.length-1], deltaHlengthm1, deltaHlengthm1);
+        MatrixOperations.elementByElementMult(learningRate, deltaHlengthm1, deltaHlengthm1);
         
-        double[][] deltaH = MatrixOperations.applyTransferFunctionDerivative(function, xh);
-        MatrixOperations.elementByElementMult(hError, deltaH, deltaH);
-        MatrixOperations.elementByElementMult(learningRate, deltaH, deltaH);
+        //Wlength = Wlength + Xhlength-1transposta * deltaO
+        double[][] xhlengthm1t = MatrixOperations.transpose(xh[hidden.length-1]);
+        double[][] xhlengthm1tdeltaO = MatrixOperations.matrixMult(xhlengthm1t, deltaO);
+        //momentum application
+        if(!lastUpdateVectorsInitialized[hidden.length]){
+            lastUpdateVectorsInitialized[hidden.length] = true;
+        } else {
+            MatrixOperations.elementByElementMult(momentum, lastUpdateVectors[hidden.length], lastUpdateVectors[hidden.length]);
+            MatrixOperations.matrixAdd(lastUpdateVectors[hidden.length], xhlengthm1tdeltaO, xhlengthm1tdeltaO);
+        }
+        MatrixOperations.copyTo(xhlengthm1tdeltaO, lastUpdateVectors[hidden.length]);
+        //end of momentum application
+        MatrixOperations.matrixAdd(weights[hidden.length], xhlengthm1tdeltaO, weights[hidden.length]);
         
         
-        //W0 = W0 + Xitransposta * XdeltaH
-        double[][] xit = MatrixOperations.transpose(xi);
-        double[][] xDeltaH = new double[deltaH.length][deltaH[0].length-1];
-        for(int i = 0; i < xDeltaH.length; i++){
-            for(int j = 0; j < xDeltaH[i].length; j++){
-                xDeltaH[i][j] = deltaH[i][j];
+        double[][] yLastDelta = new double[deltaHlengthm1.length][deltaHlengthm1[0].length-1];
+        for(int i = 0; i < yLastDelta.length; i++){
+            for(int j = 0; j < yLastDelta[i].length; j++){
+                yLastDelta[i][j] = deltaHlengthm1[i][j];
             }
         }
-        double[][] xitXdeltaH = MatrixOperations.matrixMult(xit, xDeltaH);
-        //momentum application
-        if(!lastUpdateVector0Initialized){
-            lastUpdateVector0Initialized = true;
-        } else {
-            MatrixOperations.elementByElementMult(momentum, lastUpdateVector0, lastUpdateVector0);
-            MatrixOperations.matrixAdd(lastUpdateVector0, xitXdeltaH, xitXdeltaH);
+        //System.out.println("starting weight check");
+        for(int i = 0; i < weights.length; i++){
+            //System.out.println(MatrixOperations.toString(weights[i]));
         }
-        MatrixOperations.copyTo(xitXdeltaH, lastUpdateVector0);
-        //end of momentum application
-        MatrixOperations.matrixAdd(weights0, xitXdeltaH, weights0);
+        for(int i = hidden.length-2; i >= 0; i--){
+            //Ehn = YdeltaHn+1 * Wn+1transposta
+            //deltaHn = LR * Ehn *(elemento a elemento) dTF(Xhn-1)/dx
+            double[][] wnp1t = MatrixOperations.transpose(weights[i+1]);
+            MatrixOperations.matrixMult(yLastDelta, wnp1t, errors[i]);
+            
+            double[][] deltaHn = MatrixOperations.applyTransferFunctionDerivative(function, xh[i]);
+            MatrixOperations.elementByElementMult(errors[i], deltaHn, deltaHn);
+            MatrixOperations.elementByElementMult(learningRate, deltaHn, deltaHn);
+            
+            //Wn+1 = Wn+1 + Xhntransposta * YdeltaHn+1
+            double[][] xhnt = MatrixOperations.transpose(xh[i]);
+            double[][] xhntYdeltahnp1 = MatrixOperations.matrixMult(xhnt, yLastDelta);
+            //momentum application
+            if(!lastUpdateVectorsInitialized[i+1]){
+                lastUpdateVectorsInitialized[i+1] = true;
+            } else {
+                MatrixOperations.elementByElementMult(momentum, lastUpdateVectors[i+1], lastUpdateVectors[i+1]);
+                MatrixOperations.matrixAdd(lastUpdateVectors[i+1], xhntYdeltahnp1, xhntYdeltahnp1);
+            }
+            MatrixOperations.copyTo(xhntYdeltahnp1, lastUpdateVectors[i+1]);
+            //end of momentum application
+            MatrixOperations.matrixAdd(weights[i+1], xhntYdeltahnp1, weights[i+1]);
+            
+            yLastDelta = new double[deltaHn.length][deltaHn[0].length-1];
+            for(int j = 0; j < yLastDelta.length; j++){
+                for(int k = 0; k < yLastDelta[j].length; k++){
+                    yLastDelta[j][k] = deltaHn[j][k];
+                }
+            }
+        }
         
-        //W1 = W1 + Xhtransposta * deltaO
-        double[][] xht = MatrixOperations.transpose(xh);
-        double[][] xhtdeltaO = MatrixOperations.matrixMult(xht, deltaO);
+        
+        //W0 = W0 + Xitransposta * YdeltaH0
+        double[][] xit = MatrixOperations.transpose(xi);
+        double[][] xitXdeltaH = MatrixOperations.matrixMult(xit, yLastDelta);
         //momentum application
-        if(!lastUpdateVector1Initialized){
-            lastUpdateVector1Initialized = true;
+        if(!lastUpdateVectorsInitialized[0]){
+            lastUpdateVectorsInitialized[0] = true;
         } else {
-            MatrixOperations.elementByElementMult(momentum, lastUpdateVector1, lastUpdateVector1);
-            MatrixOperations.matrixAdd(lastUpdateVector1, xhtdeltaO, xhtdeltaO);
+            MatrixOperations.elementByElementMult(momentum, lastUpdateVectors[0], lastUpdateVectors[0]);
+            MatrixOperations.matrixAdd(lastUpdateVectors[0], xitXdeltaH, xitXdeltaH);
         }
-        MatrixOperations.copyTo(xhtdeltaO, lastUpdateVector1);
+        MatrixOperations.copyTo(xitXdeltaH, lastUpdateVectors[0]);
         //end of momentum application
-        MatrixOperations.matrixAdd(weights1, xhtdeltaO, weights1);
+        MatrixOperations.matrixAdd(weights[0], xitXdeltaH, weights[0]);
+        
     }
     
     public void train(){
@@ -170,15 +234,12 @@ public class SimpleNeuralNetwork {
         }
     }
     
-    private void setXh(){
-        for(int i = 0; i < xh.length; i++){
-            for(int j = 0; j <xh[i].length; j++){
-                if(j < xh[i].length-1){
-                    xh[i][j] = hidden[i][j];
-                } else {
-                    xh[i][j] = 1;
-                }
+    private void setXh(int i){
+        for(int j = 0; j < xh[i].length; j++){
+            for(int k = 0; k <xh[i][j].length-1; k++){
+                xh[i][j][k] = hidden[i][j][k];
             }
+            xh[i][j][xh[i][j].length-1] = 1;
         }
     }
     

@@ -16,7 +16,7 @@ public class Main {
             {1, 0},
             {1, 1}
         };
-        int hiddenAmount = 3;
+        int[] hiddenAmount = new int[]{3,2,2};
         double[][] expectedOutput = new double[][]{
             {0},
             {1},
@@ -32,7 +32,7 @@ public class Main {
         
         
         System.out.println("XOR created, now training");
-        for(int i = 0; i < 100000; i++){
+        for(int i = 0; i < 10000000; i++){
             xor.train();
         }
         System.out.println("training finished, results:");
