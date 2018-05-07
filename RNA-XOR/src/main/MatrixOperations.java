@@ -192,4 +192,15 @@ public class MatrixOperations {
         }
         return string;
     }
+    
+    public static void copyTo(double[][] matrixToBeCopied, double[][] targetMatrix){
+        if(!compareDimensions(matrixToBeCopied, targetMatrix)){
+            throw new RuntimeException("The matrices don't have equal dimensions");
+        }
+        for(int i = 0; i < matrixToBeCopied.length; i++){
+            for(int j = 0; j < matrixToBeCopied[i].length; j++){
+                targetMatrix[i][j] = matrixToBeCopied[i][j];
+            }
+        }
+    }
 }
