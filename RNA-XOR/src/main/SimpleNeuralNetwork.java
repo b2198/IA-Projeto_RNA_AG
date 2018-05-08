@@ -24,7 +24,7 @@ public class SimpleNeuralNetwork {
     private boolean[] lastUpdateVectorsInitialized;
     
     public SimpleNeuralNetwork(double[][] input, int[] hiddenAmount, double[][] expectedOutput, TransferFunction function, double learningRate, double momentum) {
-        set(input, hiddenAmount, expectedOutput, function, learningRate, momentum);
+        set(input, hiddenAmount, expectedOutput, function, learningRate, momentum, true);
         /*System.out.println("Simple Neural Network created, initial state:\n"
                 + "input:\n" + MatrixOperations.toString(input) + "\n"
                 + "hidden:\n" + MatrixOperations.toString(hidden) + "\n"
@@ -36,7 +36,7 @@ public class SimpleNeuralNetwork {
                 + "expected output:\n" + MatrixOperations.toString(expectedOutput));*/
     }
     
-    public void set(double[][]input, int[] hiddenAmounts, double[][] expectedOutput, TransferFunction function, double learningRate, double momentum){
+    public void set(double[][]input, int[] hiddenAmounts, double[][] expectedOutput, TransferFunction function, double learningRate, double momentum, boolean createWeights){
         if(input.length != expectedOutput.length){
             throw new RuntimeException("Input and expected output lengths don't match");
         }
@@ -48,13 +48,10 @@ public class SimpleNeuralNetwork {
             }
         }
         this.output = new double[input.length][expectedOutput[0].length];
-        this.weights = new double[hiddenAmounts.length+1][][];
-        this.weights[0] = new double[input[0].length+1][hiddenAmounts[0]];
-        for(int i = 1; i < hiddenAmounts.length; i++){
-            this.weights[i] = new double[hiddenAmounts[i-1]+1][hiddenAmounts[i]];
-        }
-        this.weights[hiddenAmounts.length] = new double[hiddenAmounts[hiddenAmounts.length-1]+1][expectedOutput[0].length];
         this.expectedOutput = expectedOutput;
+        if(createWeights){
+            createWeights(hiddenAmounts);
+        }
         this.function = function;
         this.learningRate = learningRate;
         this.momentum = momentum;
@@ -66,6 +63,7 @@ public class SimpleNeuralNetwork {
         }
         this.errors[hiddenAmounts.length] = new double[input.length][expectedOutput[0].length];
         
+        
         xi = new double[input.length][input[0].length+1];
         setXi();
         xh = new double[hiddenAmounts.length][][];
@@ -74,22 +72,32 @@ public class SimpleNeuralNetwork {
             setXh(i);
         }
         
-        //initialize weights with random values
-        for(int i = 0; i < weights.length; i++){
-            for(int j = 0; j < weights[i].length; j++){
-                for(int k = 0; k < weights[i][j].length; k++){
-                    weights[i][j][k] = Math.random();
-                }
-            }
-        }
-        
-        
         lastUpdateVectors = new double[hiddenAmounts.length+1][][];
         lastUpdateVectorsInitialized = new boolean[hiddenAmounts.length+1];
         for(int i = 0; i < hiddenAmounts.length+1; i++){
             lastUpdateVectors[i] = new double[weights[i].length][];
             for(int j = 0; j < weights[i].length; j++){
                 lastUpdateVectors[i][j] = new double[weights[i][j].length];
+            }
+        }
+    }
+    
+    private void createWeights(int[] hiddenAmounts){
+        this.weights = new double[hiddenAmounts.length+1][][];
+        this.weights[0] = new double[input[0].length+1][hiddenAmounts[0]];
+        for(int i = 1; i < hiddenAmounts.length; i++){
+            this.weights[i] = new double[hiddenAmounts[i-1]+1][hiddenAmounts[i]];
+        }
+        this.weights[hiddenAmounts.length] = new double[hiddenAmounts[hiddenAmounts.length-1]+1][expectedOutput[0].length];
+    }
+    
+    public void initializeRandomWeights(){
+        //initialize weights with random values
+        for(int i = 0; i < weights.length; i++){
+            for(int j = 0; j < weights[i].length; j++){
+                for(int k = 0; k < weights[i][j].length; k++){
+                    weights[i][j][k] = Math.random();
+                }
             }
         }
     }
@@ -217,9 +225,62 @@ public class SimpleNeuralNetwork {
         
     }
     
-    public void train(){
+    public void train(int maxEpochNumber, double maxAverageErrorAccepted){
+        long time = System.nanoTime();
+        boolean success = false;
+        double averageError = 0;
+        int epoch = -1;
+        for(int i = 0; i < maxEpochNumber; i++){
+            feedForward();
+            backPropagation();
+            averageError = 0;
+            for(int j = 0; j < errors[errors.length-1].length; j++){
+                for(int k = 0; k < errors[errors.length-1][j].length; k++){
+                    averageError += Math.abs(errors[errors.length-1][j][k]);
+                }
+            }
+            if(averageError <= maxAverageErrorAccepted){
+                success = true;
+                epoch = i;
+                break;
+            }
+        }
+        time = System.nanoTime()-time;
+        if(success){
+            System.out.println("Training successful");
+            System.out.println("error obtained: " + averageError);
+            System.out.println("epochs needed: " + epoch);
+            System.out.printf("time spent:%.2f seconds\n",(time/1e9));
+            System.out.println("output:\n" + MatrixOperations.toString(output));
+        } else {
+            System.out.println("Training failed");
+            System.out.println("error obtained: " + averageError);
+            System.out.println("epochs needed: " + maxEpochNumber);
+            System.out.printf("time spent:%.2f seconds\n",(time/1e9));
+            System.out.println("output:\n" + MatrixOperations.toString(output));
+        }
+    }
+    
+    public void test(double[][] testInput){
+        if(!MatrixOperations.isMatrix(testInput)){
+            throw new RuntimeException("the input is not a matrix");
+        }
+        if(testInput[0].length != input[0].length){
+            throw new RuntimeException("the input does not have the correct amount of columns");
+        }
+        double[][] tempInput = input;
+        setInput(testInput);
         feedForward();
-        backPropagation();
+        System.out.println("output:\n" + MatrixOperations.toString(output));
+        setInput(tempInput);
+    }
+    
+    public void setInput(double[][] input){
+        int[] hiddenAmounts = new int[hidden.length];
+        for(int i = 0; i < hiddenAmounts.length; i++){
+            hiddenAmounts[i] = hidden[i][0].length;
+        }
+        set(input,hiddenAmounts,new double[input.length][output[0].length],function,learningRate,momentum, false);
     }
     
     private void setXi(){
