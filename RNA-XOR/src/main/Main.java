@@ -16,23 +16,23 @@ public class Main {
             {1, 0},
             {1, 1}
         };
-        int[] hiddenAmount = new int[]{3,2};
+        int[] hiddenAmount = new int[]{3,3};
         double[][] expectedOutput = new double[][]{
-            {0},
-            {1},
-            {1},
-            {0}
+            {0, 0, 0, 0, 1},
+            {1, 0, 0, 1, 0},
+            {1, 0, 1, 0, 0},
+            {0, 1, 0, 0, 0}
         };
         TransferFunction function;
-        function = new SimpleSigmoidFunction(1.05,-0.025);
+        function = new SimpleSigmoidFunction(1.1,-0.05);
         //function = new SimpleHyperbolicTangentFunction();
-        double learningRate = 0.3;
+        double learningRate = 0.4;
         double momentum = 0.7;
-        SimpleNeuralNetwork xor = new SimpleNeuralNetwork(input, hiddenAmount, expectedOutput, function, learningRate, momentum);
+        MLPArtificialNeuralNetwork xor = new MLPArtificialNeuralNetwork(input, hiddenAmount, expectedOutput, function, learningRate, momentum);
         xor.initializeRandomWeights();
         
         System.out.println("XOR created, now training");
-        xor.train(5000000,0.001);
+        xor.train(10000000,0.001);
         
         double[][] testInput = new double[][]{
             {0,0}

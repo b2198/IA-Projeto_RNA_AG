@@ -1,12 +1,13 @@
 package main;
 
+import java.util.ArrayList;
 import main.transferfunctions.TransferFunction;
 
 /**
  *
  * @author b2198
  */
-public class SimpleNeuralNetwork {
+public class MLPArtificialNeuralNetwork {
     private double[][] input;
     private double[][][] hidden;
     private double[][] output;
@@ -22,18 +23,11 @@ public class SimpleNeuralNetwork {
     private double momentum;
     private double[][][] lastUpdateVectors;
     private boolean[] lastUpdateVectorsInitialized;
+    private ArrayList<MLPListener> listeners;
     
-    public SimpleNeuralNetwork(double[][] input, int[] hiddenAmount, double[][] expectedOutput, TransferFunction function, double learningRate, double momentum) {
+    public MLPArtificialNeuralNetwork(double[][] input, int[] hiddenAmount, double[][] expectedOutput, TransferFunction function, double learningRate, double momentum) {
         set(input, hiddenAmount, expectedOutput, function, learningRate, momentum, true);
-        /*System.out.println("Simple Neural Network created, initial state:\n"
-                + "input:\n" + MatrixOperations.toString(input) + "\n"
-                + "hidden:\n" + MatrixOperations.toString(hidden) + "\n"
-                + "output:\n" + MatrixOperations.toString(output) + "\n"
-                + "Xi:\n" + MatrixOperations.toString(xi) + "\n"
-                + "Xh:\n" + MatrixOperations.toString(xh) + "\n"
-                + "weights0:\n" + MatrixOperations.toString(weights0) + "\n"
-                + "weights1:\n" + MatrixOperations.toString(weights1) + "\n"
-                + "expected output:\n" + MatrixOperations.toString(expectedOutput));*/
+        listeners = new ArrayList<>();
     }
     
     public void set(double[][]input, int[] hiddenAmounts, double[][] expectedOutput, TransferFunction function, double learningRate, double momentum, boolean createWeights){
@@ -56,9 +50,7 @@ public class SimpleNeuralNetwork {
         this.learningRate = learningRate;
         this.momentum = momentum;
         this.errors = new double[hiddenAmounts.length+1][][];
-        //System.out.println("errors length: " + this.errors.length);
         for(int i = 0; i < hiddenAmounts.length; i++){
-            //System.out.println("i: " + i);
             this.errors[i] = new double[input.length][hiddenAmounts[i]+1];
         }
         this.errors[hiddenAmounts.length] = new double[input.length][expectedOutput[0].length];
@@ -120,13 +112,7 @@ public class SimpleNeuralNetwork {
         }
         
         //O = TF(Xhlength-1 * Wlength)
-        //System.out.println("checking matrices");
-        for(int i = 0; i < hidden.length; i++){
-            //System.out.println(MatrixOperations.toString(hidden[i])+"\n");
-        }
         setXh(hidden.length-1);
-        //System.out.println("checking Xh");
-        //System.out.println(MatrixOperations.toString(xh[0]));
         MatrixOperations.matrixMult(xh[hidden.length-1], weights[hidden.length], output);
         MatrixOperations.applyTransferFunction(function, output, output);
         
@@ -171,10 +157,6 @@ public class SimpleNeuralNetwork {
             for(int j = 0; j < yLastDelta[i].length; j++){
                 yLastDelta[i][j] = deltaHlengthm1[i][j];
             }
-        }
-        //System.out.println("starting weight check");
-        for(int i = 0; i < weights.length; i++){
-            //System.out.println(MatrixOperations.toString(weights[i]));
         }
         for(int i = hidden.length-2; i >= 0; i--){
             //Ehn = YdeltaHn+1 * Wn+1transposta
@@ -226,11 +208,18 @@ public class SimpleNeuralNetwork {
     }
     
     public void train(int maxEpochNumber, double maxAverageErrorAccepted){
+        MLPInfo info = new MLPInfo(input, hidden, output, weights, xi, xh, errors, lastUpdateVectors, function, learningRate);
+        for(MLPListener listener : listeners){
+            listener.onTrainingStarted(info);
+        }
         long time = System.nanoTime();
         boolean success = false;
         double averageError = 0;
         int epoch = -1;
         for(int i = 0; i < maxEpochNumber; i++){
+            for(MLPListener listener : listeners){
+                listener.onCycleStart(info, i);
+            }
             feedForward();
             backPropagation();
             averageError = 0;
@@ -239,6 +228,9 @@ public class SimpleNeuralNetwork {
                     averageError += Math.abs(errors[errors.length-1][j][k]);
                 }
             }
+            for(MLPListener listener : listeners){
+                listener.onCycleEnd(info, i, averageError);
+            }
             if(averageError <= maxAverageErrorAccepted){
                 success = true;
                 epoch = i;
@@ -246,6 +238,9 @@ public class SimpleNeuralNetwork {
             }
         }
         time = System.nanoTime()-time;
+        for(MLPListener listener : listeners){
+            listener.onFinished(info, success?epoch:maxEpochNumber, success);
+        }
         if(success){
             System.out.println("Training successful");
             System.out.println("error obtained: " + averageError);
@@ -304,4 +299,37 @@ public class SimpleNeuralNetwork {
         }
     }
     
+    public interface MLPListener{
+        void onTrainingStarted(MLPInfo info);
+        void onCycleStart(MLPInfo info, int cycle);
+        void onCycleEnd(MLPInfo info, int cycle, double averageError);
+        void onFinished(MLPInfo info, int finalEpoch, boolean success);
+    }
+    
+    public class MLPInfo{
+        public final double[][] input;
+        public final double[][][] hidden;
+        public final double[][] output;
+        public final double[][][] weights;
+        public final double[][] xi;
+        public final double[][][] xh;
+        public final double[][][] errors;
+        public final double[][][] lastUpdateVectors;
+        public final TransferFunction function;
+        public final double learningRate;
+
+        public MLPInfo(double[][] input, double[][][] hidden, double[][] output, double[][][] weights, double[][] xi, double[][][] xh, double[][][] errors, double[][][] lastUpdateVectors, TransferFunction function, double learningRate) {
+            this.input = input;
+            this.hidden = hidden;
+            this.output = output;
+            this.weights = weights;
+            this.xi = xi;
+            this.xh = xh;
+            this.errors = errors;
+            this.lastUpdateVectors = lastUpdateVectors;
+            this.function = function;
+            this.learningRate = learningRate;
+        }
+        
+    }
 }
