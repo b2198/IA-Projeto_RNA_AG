@@ -74,6 +74,10 @@ public class MLPArtificialNeuralNetwork {
         }
     }
     
+    public ArrayList<MLPListener> getListeners(){
+        return listeners;
+    }
+    
     private void createWeights(int[] hiddenAmounts){
         this.weights = new double[hiddenAmounts.length+1][][];
         this.weights[0] = new double[input[0].length+1][hiddenAmounts[0]];
@@ -266,6 +270,7 @@ public class MLPArtificialNeuralNetwork {
         double[][] tempInput = input;
         setInput(testInput);
         feedForward();
+        System.out.println("starting test:");
         System.out.println("output:\n" + MatrixOperations.toString(output));
         setInput(tempInput);
     }
