@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+    <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+        <group>
+            <file>file:/C:/Users/User/Documents/GitHub/RNA-XOR/RNA-XOR/src/main/MLPTraining.java</file>
+            <file>file:/C:/Users/User/Documents/GitHub/RNA-XOR/RNA-XOR/src/main/MatrixOperations.java</file>
+            <file>file:/C:/Users/User/Documents/GitHub/RNA-XOR/RNA-XOR/src/main/transferfunctions/SimpleHyperbolicTangentFunction.java</file>
+            <file>file:/C:/Users/User/Documents/GitHub/RNA-XOR/RNA-XOR/src/main/transferfunctions/SimpleSigmoidFunction.java</file>
+            <file>file:/C:/Users/User/Documents/GitHub/RNA-XOR/RNA-XOR/src/main/graphics/MLPPlotter.java</file>
+            <file>file:/C:/Users/User/Documents/GitHub/RNA-XOR/RNA-XOR/src/main/graphics/EpochErrorMLPPlotter.java</file>
+            <file>file:/C:/Users/User/Documents/GitHub/RNA-XOR/RNA-XOR/src/main/MLPArtificialNeuralNetwork.java</file>
+        </group>
+    </open-files>
+</project-private>
