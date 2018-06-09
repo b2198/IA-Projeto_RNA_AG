@@ -9,9 +9,8 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import main.graphics.DatasetWriter;
-import main.graphics.MLPPlotter;
-import main.graphics.EpochErrorMLPPlotter;
-import main.transferfunctions.SimpleSigmoidFunction;
+import main.graphics.MLPConectionRenderer;
+import main.transferfunctions.SimpleHyperbolicTangentFunction;
 import main.transferfunctions.TransferFunction;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -37,6 +36,8 @@ public class MLPTraining extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         
+        MLPConectionRenderer conections = new MLPConectionRenderer();
+        
         DefaultXYDataset dataset = new DefaultXYDataset();
         DatasetWriter writer = new DatasetWriter(dataset);
         ValueAxis domainAxis = new NumberAxis();
@@ -45,16 +46,23 @@ public class MLPTraining extends Application {
         Plot plot = new XYPlot(dataset, domainAxis, rangeAxis, renderer);
         java.awt.Color graphBG = new java.awt.Color(220, 255, 220);
         plot.setBackgroundPaint(graphBG);
-        JFreeChart chart = new JFreeChart("test chart", plot);
+        JFreeChart chart = new JFreeChart("gráfico erro x época", plot);
         ChartPanel cPanel = new ChartPanel(chart, 600, 600, 400, 400, 500, 500, true, true, true, true, true, true);
         SwingNode sNode = new SwingNode();
         sNode.setContent(cPanel);
         
-        VBox vbox = new VBox(sNode);
-        StackPane root = new StackPane(vbox);
-        Scene scene = new Scene(root,400,400);
+        VBox vbox1 = new VBox(conections);
+        VBox vbox2 = new VBox(sNode);
+        vbox2.setPrefSize(500, 500);
+        HBox hbox = new HBox(vbox1, vbox2);
+        StackPane root = new StackPane(hbox);
+        Scene scene = new Scene(root);
         primaryStage.setScene(scene);
         primaryStage.show();
+        
+        
+        //MLP specific
+        
         
         double[][] input = new double[][]{
             {0, 0},
@@ -62,27 +70,28 @@ public class MLPTraining extends Application {
             {1, 0},
             {1, 1}
         };
-        int[] hiddenAmount = new int[]{3,3};
+        int[] hiddenAmount = new int[]{4,1};
         double[][] expectedOutput = new double[][]{
-            {0,0},
-            {1,1},
-            {1,1},
-            {0,1}
+            {0},
+            {1},
+            {1},
+            {0}
         };
         TransferFunction function;
-        function = new SimpleSigmoidFunction(1.0,-0.00);
-        //function = new SimpleHyperbolicTangentFunction();
-        double learningRate = 0.4;
-        double momentum = 0.8;
+        //function = new SimpleSigmoidFunction(1.1,-0.05);
+        function = new SimpleHyperbolicTangentFunction();
+        double learningRate = 0.5;
+        double momentum = 0.83;
         MLPArtificialNeuralNetwork xor = new MLPArtificialNeuralNetwork(input, hiddenAmount, expectedOutput, function, learningRate, momentum);
         xor.initializeRandomWeights();
+        xor.getListeners().add(conections);
         xor.getListeners().add(writer);
         
         double[][] testInput = new double[][]{
             {0,0}
         };
         
-        int maxEpochNumber = 10000000;
+        int maxEpochNumber = 100000;
         double minAverageError = 0.001;
         startTraining(xor, testInput, maxEpochNumber, minAverageError);
         

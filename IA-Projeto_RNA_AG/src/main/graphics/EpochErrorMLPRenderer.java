@@ -10,14 +10,14 @@ import main.MLPArtificialNeuralNetwork;
  *
  * @author b2198
  */
-public class EpochErrorMLPPlotter extends MLPPlotter {
+public class EpochErrorMLPRenderer extends MLPRenderer {
     
     private double xScale, yScale;
     private double lastTime, lastError;
     private long lastRealTime;
     private long currentVisualCycle;
 
-    public EpochErrorMLPPlotter(double xScale, double yScale) {
+    public EpochErrorMLPRenderer(double xScale, double yScale) {
         this.xScale = xScale;
         this.yScale = yScale;
     }

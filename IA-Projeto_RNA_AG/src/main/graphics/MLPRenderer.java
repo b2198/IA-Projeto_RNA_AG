@@ -7,9 +7,9 @@ import main.MLPArtificialNeuralNetwork.MLPListener;
  *
  * @author b2198
  */
-public abstract class MLPPlotter extends Canvas implements MLPListener {
+public abstract class MLPRenderer extends Canvas implements MLPListener {
     
-    public MLPPlotter(){
+    public MLPRenderer(){
         super(400,400);
     }
     
